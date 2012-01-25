@@ -89,13 +89,16 @@ static inline void update_state(sha256_state_t *state, const uint32_t data[16]) 
 	}
 }
 
+static inline void init_state(sha256_state_t *state) {
+	for (size_t i = 0; i < 8; i++) {
+		state->h[i] = h[i];
+	}
+}
+
 static sha256_state_t midstate(const uint8_t data[64]) {
 	sha256_state_t state;
 
-	for (size_t i = 0; i < 8; i++) {
-		state.h[i] = h[i];
-	}
-
+	init_state(&state);
 	update_state(&state, (const uint32_t const *) data);
 
 	return state;
@@ -111,7 +114,7 @@ PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 		goto error; 
 	}
 	s = PyByteArray_Size(arg);
-	if (s != 80) { 
+	if (s < 64) { 
 		goto error; 
 	}
 	data = PyByteArray_AsString(arg);
