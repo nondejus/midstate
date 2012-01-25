@@ -3,41 +3,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct block_header_t block_header_t;
-struct block_header_t {
-	uint8_t version[4];
-	uint8_t previous_hash[32];
-	uint8_t merkle_root[32];
-	uint8_t timestamp[4];
-	uint8_t target[4];
-	uint8_t nonce[4];
-};
-
 typedef union sha256_state_t sha256_state_t;
 union sha256_state_t {
-	uint32_t h[8];
-	char     byte[32];
+	uint32_t      h[8];
+	unsigned char byte[32];
 };
-
-static inline void reverse_bytes(uint8_t *a, size_t n) {
-	uint8_t t[n];
-	memcpy(t, a, n);
-	for (size_t i = 0; i < n; i++) {
-		a[i] = t[n - i - 1];
-	}
-}
-
-static inline void reverse_header(block_header_t *header) {
-	reverse_bytes(header->version,       sizeof(header->version));
-	reverse_bytes(header->previous_hash, sizeof(header->previous_hash));
-	reverse_bytes(header->merkle_root,   sizeof(header->merkle_root));
-	reverse_bytes(header->timestamp,     sizeof(header->timestamp));
-	reverse_bytes(header->target,        sizeof(header->target));
-	reverse_bytes(header->nonce,         sizeof(header->nonce));
-	//for (size_t i = 0; i < 20; i++) {
-	//	reverse_bytes((uint32_t *) header + i, 4);
-	//}
-}
 
 static uint32_t h[] = {
 	0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
@@ -62,10 +32,13 @@ static inline void update_state(sha256_state_t *state, const uint32_t data[16]) 
 	uint32_t w[64];
 	sha256_state_t t = *state;
 
-	memcpy(w, data, sizeof(uint32_t) * 16);
+	for (size_t i = 0 ; i < 64; i++) {
+		w[i] = htobe32(data[i]);
+	}
+
 	for (size_t i = 16; i < 64; i++) {
-		uint32_t s0 = ror32(w[i - 15], 7) ^ ror32(w[i - 15], 18) ^ ror32(w[i - 15],  3);
-		uint32_t s1 = ror32(w[i - 2], 17) ^ ror32(w[i -  2], 19) ^ ror32(w[i -  2], 10);
+		uint32_t s0 = ror32(w[i - 15], 7) ^ ror32(w[i - 15], 18) ^ (w[i - 15] >> 3);
+		uint32_t s1 = ror32(w[i - 2], 17) ^ ror32(w[i -  2], 19) ^ (w[i -  2] >> 10);
 		w[i] = w[i - 16] + s0 + w[i - 7] + s1;
 	}
 
@@ -98,7 +71,7 @@ static inline void init_state(sha256_state_t *state) {
 	}
 }
 
-static sha256_state_t midstate(const char data[64]) {
+static sha256_state_t midstate(const unsigned char data[64]) {
 	sha256_state_t state;
 
 	init_state(&state);
@@ -107,9 +80,17 @@ static sha256_state_t midstate(const char data[64]) {
 	return state;
 }
 
+void print_hex(char unsigned *data, size_t s) {
+	for (size_t i = 0; i < s; i++) {
+		printf("%02hhX", data[i]);
+	}
+	printf("\n");
+}
+
 PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	Py_ssize_t s;
-	char *t, *data;
+	char *t;
+	unsigned char *data;
 	sha256_state_t mstate;
 
 	if (PyBytes_Check(arg) != true) { 
@@ -120,15 +101,9 @@ PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	if (s < 64) { goto error; }
 	data = malloc(s);
 	memcpy(data, t, s);
-	// TODO: endianess
-	//reverse_header((block_header_t *) data);
 	mstate = midstate(data);
-	for (size_t i = 0; i < s; i++) {
-		printf("%02hhX", data[i]);
-	}
-	printf("\n");
 	free(data);
-	return PyBytes_FromStringAndSize(mstate.byte, sizeof(mstate));
+	return PyBytes_FromStringAndSize((char *) mstate.byte, sizeof(mstate));
 
 error:
 	Py_RETURN_NONE;
@@ -159,22 +134,12 @@ PyInit_midstate(void)
 }
 
 int main(int argc, char *argv[]) {
-	const char data[] = {
-		0x00, 0x00, 0x00, 0x01, 0x7d, 0x00, 0xe0, 0x9e, 0x5b, 0x42, 0x6b, 0x79, 0xb7, 0x33, 0xba, 0x52, 
-		0x02, 0x3d, 0x44, 0x45, 0x85, 0xd9, 0xc3, 0x37, 0xb6, 0x13, 0x99, 0xae, 0x00, 0x00, 0x09, 0x30, 
-		0x00, 0x00, 0x00, 0x00, 0x16, 0x7c, 0x75, 0x49, 0x16, 0x94, 0xfb, 0x72, 0xa6, 0x5c, 0x08, 0x4b, 
-		0xfd, 0x6c, 0x40, 0xbe, 0x74, 0x66, 0xef, 0x4b, 0x47, 0x1a, 0x15, 0xc5, 0x7c, 0x01, 0xff, 0x37, 
-		0xd3, 0x53, 0x42, 0x80, 0x4f, 0x20, 0x1c, 0x12, 0x1a, 0x0c, 0xd4, 0x3f, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x02, 0x00, 0x00, 
-	};
+	const unsigned char data[] = "\1\0\0\0\xe4\xe8\x9d\xf8H\x1b\xc5v\xb9\x9f" "fWb\xcb\x82" "f\xf8U\xc6h" "@\x16\xb8\xb4\xd1iv\xf2\0\0\0\0\xe1\xd1O\x08\x98\xe6\x1d\x02O\x0e\1r\xfc" "cFi\xf5\xfc\xd5mN\1\xca\x10\xe9" "7{\x05hc\xd1U\xc8" "f O\xf8\xff\x07\x1d\0\0\0";
 
 	sha256_state_t state; 
 	state = midstate(data);
 
-	for (size_t i = 0; i < 32; i++) {
-		printf("%02hhX", state.byte[i]);
-	}
+	print_hex(state.byte, 32);
+	printf("\nb8101f7c4a8e294ecbccb941dde17fd461dc39ff102bc37bb7ac7d5b95290166 <-- want\n");
 	return 0;
 }
