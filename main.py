@@ -1,4 +1,7 @@
+#!/bin/env python3
+
 from midstate import midstate
+from binascii import hexlify
 
 data = \
 		'00000001' + \
@@ -11,4 +14,5 @@ data = \
 target_midstate = \
 		'42c1082d845521d891fe932742db7de19ad86bcbfa440b1675b12fbd17890c05'
 
-
+datab = bytes.fromhex(data);
+print(hexlify(midstate(datab)))

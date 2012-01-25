@@ -16,7 +16,7 @@ struct block_header_t {
 typedef union sha256_state_t sha256_state_t;
 union sha256_state_t {
 	uint32_t h[8];
-	uint8_t  byte[32];
+	char     byte[32];
 };
 
 static inline void reverse_bytes(uint8_t *a, size_t n) {
@@ -59,7 +59,7 @@ static inline void update_state(sha256_state_t *state, const uint32_t data[16]) 
 	uint32_t w[64];
 	sha256_state_t t = *state;
 
-	memcpy(w, data, sizeof(data));
+	memcpy(w, data, sizeof(uint32_t) * 16);
 	for (size_t i = 16; i < 64; i++) {
 		uint32_t s0 = ror32(w[i - 15], 7) ^ ror32(w[i - 15], 18) ^ ror32(w[i - 15],  3);
 		uint32_t s1 = ror32(w[i - 2], 17) ^ ror32(w[i -  2], 19) ^ ror32(w[i -  2], 10);
@@ -95,7 +95,7 @@ static inline void init_state(sha256_state_t *state) {
 	}
 }
 
-static sha256_state_t midstate(const uint8_t data[64]) {
+static sha256_state_t midstate(const char data[64]) {
 	sha256_state_t state;
 
 	init_state(&state);
@@ -106,20 +106,25 @@ static sha256_state_t midstate(const uint8_t data[64]) {
 
 PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	Py_ssize_t s;
-	uint8_t *data;
+	char *t, *data;
 	sha256_state_t mstate;
 
-	if (PyByteArray_Check(arg) != true) { 
+	if (PyBytes_Check(arg) != true) { 
 		printf("no byte array\n");
 		goto error; 
 	}
-	s = PyByteArray_Size(arg);
-	if (s < 64) { 
-		goto error; 
-	}
-	data = PyByteArray_AsString(arg);
+	if (PyBytes_AsStringAndSize(arg, &t, &s) == -1) { goto error; }
+	if (s < 64) { goto error; }
+	data = malloc(s);
+	memcpy(data, t, s);
+	// TODO: endianess
 	mstate = midstate(data);
-	return PyByteArray_FromStringAndSize((char *) &mstate, 64);
+	for (size_t i = 0; i < s; i++) {
+		printf("%02hhX", data[i]);
+	}
+	printf("\n");
+	free(data);
+	return PyBytes_FromStringAndSize(mstate.byte, sizeof(mstate));
 
 error:
 	Py_RETURN_NONE;
