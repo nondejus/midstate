@@ -1,7 +1,9 @@
-#include <python3.2/Python.h>
+#include <Python.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include <x86intrin.h>
 
 typedef union sha256_state_t sha256_state_t;
 union sha256_state_t {
@@ -32,7 +34,7 @@ static inline void update_state(sha256_state_t *state, const uint32_t data[16]) 
 	uint32_t w[64];
 	sha256_state_t t = *state;
 
-	for (size_t i = 0 ; i < 64; i++) {
+	for (size_t i = 0 ; i < 16; i++) {
 		w[i] = htobe32(data[i]);
 	}
 
@@ -137,9 +139,11 @@ int main(int argc, char *argv[]) {
 	const unsigned char data[] = "\1\0\0\0\xe4\xe8\x9d\xf8H\x1b\xc5v\xb9\x9f" "fWb\xcb\x82" "f\xf8U\xc6h" "@\x16\xb8\xb4\xd1iv\xf2\0\0\0\0\xe1\xd1O\x08\x98\xe6\x1d\x02O\x0e\1r\xfc" "cFi\xf5\xfc\xd5mN\1\xca\x10\xe9" "7{\x05hc\xd1U\xc8" "f O\xf8\xff\x07\x1d\0\0\0";
 
 	sha256_state_t state; 
+	
+	//for (size_t i = 0; i < 1000000; i++)
 	state = midstate(data);
 
+	printf("b8101f7c4a8e294ecbccb941dde17fd461dc39ff102bc37bb7ac7d5b95290166 <-- want\n");
 	print_hex(state.byte, 32);
-	printf("\nb8101f7c4a8e294ecbccb941dde17fd461dc39ff102bc37bb7ac7d5b95290166 <-- want\n");
 	return 0;
 }

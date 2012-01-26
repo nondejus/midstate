@@ -15,6 +15,9 @@ target_midstate = \
 		b'b8101f7c4a8e294ecbccb941dde17fd461dc39ff102bc37bb7ac7d5b95290166'
 
 datab = bytes.fromhex(data);
+
+#for i in range(1000000): midstate(datab)
+
 print("target:")
 print(target_midstate)
 print("got:")
