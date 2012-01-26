@@ -105,14 +105,25 @@ PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	memcpy(data, t, s);
 	mstate = midstate(data);
 	free(data);
-	return PyBytes_FromStringAndSize((char *) mstate.byte, sizeof(mstate));
+
+	//return PyBytes_FromStringAndSize((char *) mstate.byte, sizeof(mstate));
+	return PyTuple_Pack(8, 
+			PyLong_FromUnsignedLong(mstate.h[0]),
+			PyLong_FromUnsignedLong(mstate.h[1]),
+			PyLong_FromUnsignedLong(mstate.h[2]),
+			PyLong_FromUnsignedLong(mstate.h[3]),
+			PyLong_FromUnsignedLong(mstate.h[4]),
+			PyLong_FromUnsignedLong(mstate.h[5]),
+			PyLong_FromUnsignedLong(mstate.h[6]),
+			PyLong_FromUnsignedLong(mstate.h[7])
+			);
 
 error:
 	Py_RETURN_NONE;
 }
 
 static struct PyMethodDef midstate_functions[] = {
-	{"midstate", midstate_helper, METH_O, NULL},
+	{"SHA256", midstate_helper, METH_O, NULL},
 	{NULL, NULL, 0, NULL},
 };
 
