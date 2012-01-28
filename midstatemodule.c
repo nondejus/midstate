@@ -1,5 +1,5 @@
 // Copyright (c) 2012 Johannes Kimmel
-// Distributed under the MIT/X11 software license, see the accompanying
+// Distributed under the MIT/X11 software license, see
 // http://www.opensource.org/licenses/mit-license.php
 
 #include <Python.h>
@@ -98,24 +98,32 @@ PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	PyObject *ret = NULL;
 	PyObject *t_int = NULL;
 	char *t;
-	unsigned char *data;
+	unsigned char data[64];
 	sha256_state_t mstate;
 
 	if (PyBytes_Check(arg) != true) { 
-		printf("no byte array\n");
+		PyErr_SetString(PyExc_ValueError, "Need bytes object as argument.");
 		goto error; 
 	}
-	if (PyBytes_AsStringAndSize(arg, &t, &s) == -1) { goto error; }
-	if (s < 64) { goto error; }
-	data = malloc(s);
-	memcpy(data, t, s);
+	if (PyBytes_AsStringAndSize(arg, &t, &s) == -1) {
+		// Got exception
+		goto error;
+	}
+	if (s < 64) { 
+		PyErr_SetString(PyExc_ValueError, "Argument length must be at least 64 bytes.");
+		goto error; 
+	}
+
+	memcpy(data, t, 64);
 	mstate = midstate(data);
-	free(data);
 
 	ret = PyTuple_New(8);
 	for (size_t i = 0; i < 8; i++) {
 		t_int = PyLong_FromUnsignedLong(mstate.h[i]);
-		if (PyTuple_SetItem(ret, i, t_int) != 0) { goto error; }
+		if (PyTuple_SetItem(ret, i, t_int) != 0) { 
+			t_int = NULL; // ret is owner of the int now
+			goto error; 
+		}
 	}
 
 	return ret;
@@ -123,7 +131,8 @@ PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 error:
 	Py_XDECREF(t_int);
 	Py_XDECREF(ret);
-	Py_RETURN_NONE;
+
+	return NULL;
 }
 
 static struct PyMethodDef midstate_functions[] = {

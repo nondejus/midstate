@@ -16,7 +16,7 @@ target_midstate = \
 
 datab = bytes.fromhex(data);
 
-#for i in range(1000000): midstate(datab)
+#for i in range(1000000): SHA256(datab)
 
 print("target:")
 print(target_midstate)
@@ -24,3 +24,5 @@ print("got:")
 print("%8x%8x%8x%8x%8x%8x%8x%8x" % SHA256(datab))
 print(SHA256(b"This is just a test, ignore it. I am making it over 64-bytes long.") == (0x755f1a94, 0x999b270c, 0xf358c014, 0xfd39caeb, 0x0dcc9ebc, 0x4694cd1a, 0x8e95678e, 0x75fac450))
 #print(hexlify(midstate(datab)))
+#SHA256("");
+#SHA256(b"");
