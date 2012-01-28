@@ -3,11 +3,11 @@
 // http://www.opensource.org/licenses/mit-license.php
 
 #include <Python.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-#include <x86intrin.h>
+#include <arpa/inet.h>
 
 typedef union sha256_state_t sha256_state_t;
 union sha256_state_t {
@@ -39,7 +39,7 @@ static inline void update_state(sha256_state_t *state, const uint32_t data[16]) 
 	sha256_state_t t = *state;
 
 	for (size_t i = 0 ; i < 16; i++) {
-		w[i] = htobe32(data[i]);
+		w[i] = htonl(data[i]);
 	}
 
 	for (size_t i = 16; i < 64; i++) {
@@ -95,6 +95,8 @@ void print_hex(char unsigned *data, size_t s) {
 
 PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	Py_ssize_t s;
+	PyObject *ret = NULL;
+	PyObject *t_int = NULL;
 	char *t;
 	unsigned char *data;
 	sha256_state_t mstate;
@@ -110,19 +112,17 @@ PyObject *midstate_helper(PyObject *self, PyObject *arg) {
 	mstate = midstate(data);
 	free(data);
 
-	//return PyBytes_FromStringAndSize((char *) mstate.byte, sizeof(mstate));
-	return PyTuple_Pack(8, 
-			PyLong_FromUnsignedLong(mstate.h[0]),
-			PyLong_FromUnsignedLong(mstate.h[1]),
-			PyLong_FromUnsignedLong(mstate.h[2]),
-			PyLong_FromUnsignedLong(mstate.h[3]),
-			PyLong_FromUnsignedLong(mstate.h[4]),
-			PyLong_FromUnsignedLong(mstate.h[5]),
-			PyLong_FromUnsignedLong(mstate.h[6]),
-			PyLong_FromUnsignedLong(mstate.h[7])
-			);
+	ret = PyTuple_New(8);
+	for (size_t i = 0; i < 8; i++) {
+		t_int = PyLong_FromUnsignedLong(mstate.h[i]);
+		if (PyTuple_SetItem(ret, i, t_int) != 0) { goto error; }
+	}
+
+	return ret;
 
 error:
+	Py_XDECREF(t_int);
+	Py_XDECREF(ret);
 	Py_RETURN_NONE;
 }
 
