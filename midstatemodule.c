@@ -1,3 +1,7 @@
+// Copyright (c) 2012 Johannes Kimmel
+// Distributed under the MIT/X11 software license, see the accompanying
+// http://www.opensource.org/licenses/mit-license.php
+
 #include <Python.h>
 #include <string.h>
 #include <stdint.h>
